@@ -1,0 +1,38 @@
+{
+    "templateType": "resource",
+    "ServiceName" : "security",
+    "location" : "westeurope",
+    "locationShort" : "we",
+    "environment" : "sec",
+    "lockResources": false,
+    "tags": null,
+    "common": {
+    },
+    "firewall": {
+      "enabled": true,
+      "type": "afw",
+      "properties": {
+        "datadogRuleset": false,
+        "baseNetworkPrefix": "10.0.0.0/8",
+        "applicationRuleCollections": [],
+        "natRuleCollections": [],
+        "networkRuleCollections": []
+      }
+    },
+    "network": {
+      "properties": {
+        "subnets": {
+          "azureFirewall": {
+            "subnetName": "AzureFirewallSubnet",
+            "subnetPrefix": "10.222.4.64/26"
+          },
+          "dns": {
+            "subnetPrefix": "10.244.4.192/27"
+          },
+          "bastion": {
+            "subnetPrefix": "10.244.4.224/27"
+          }
+        }
+      }
+    }
+  }

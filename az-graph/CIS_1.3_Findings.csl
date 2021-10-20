@@ -1,0 +1,49 @@
+securityresources
+    | where type == "microsoft.security/regulatorycompliancestandards/regulatorycompliancecontrols/regulatorycomplianceassessments"
+    | extend complianceStandardId = replace( "-", " ", extract(@'/regulatoryComplianceStandards/([^/]*)', 1, id))
+    | where complianceStandardId ==  "Azure CIS 1.3.0"
+    | extend failedResources = toint(properties.failedResources), passedResources = toint(properties.passedResources),skippedResources = toint(properties.skippedResources)
+    | where failedResources + passedResources + skippedResources > 0 or properties.assessmentType == "MicrosoftManaged"
+    | join kind = leftouter(
+    securityresources
+    | where type == "microsoft.security/assessments") on subscriptionId, name
+    | extend complianceState = tostring(properties.state)
+    | extend resourceSource = tolower(tostring(properties1.resourceDetails.Source))
+    | extend recommendationId = iff(isnull(id1) or isempty(id1), id, id1)
+    | extend resourceId = trim(' ', tolower(tostring(case(resourceSource =~ 'azure', properties1.resourceDetails.Id,
+                                                        resourceSource =~ 'gcp', properties1.resourceDetails.GcpResourceId,
+                                                        resourceSource =~ 'aws' and isnotempty(tostring(properties1.resourceDetails.ConnectorId)), properties1.resourceDetails.Id,
+                                                        resourceSource =~ 'aws', properties1.resourceDetails.AwsResourceId,
+                                                        extract('^(.+)/providers/Microsoft.Security/assessments/.+$',1,recommendationId)))))
+    | extend regexResourceId = extract_all(@"/providers/[^/]+(?:/([^/]+)/[^/]+(?:/[^/]+/[^/]+)?)?/([^/]+)/([^/]+)$", resourceId)[0]
+    | extend resourceType = iff(resourceSource =~ "aws" and isnotempty(tostring(properties1.resourceDetails.ConnectorId)), tostring(properties1.additionalData.ResourceType), iff(regexResourceId[1] != "", regexResourceId[1], iff(regexResourceId[0] != "", regexResourceId[0], "subscriptions")))
+    | extend resourceName = tostring(regexResourceId[2])
+    | extend recommendationName = name
+    | extend recommendationDisplayName = tostring(iff(isnull(properties1.displayName) or isempty(properties1.displayName), properties.description, properties1.displayName))
+    | extend description = tostring(properties1.metadata.description)
+    | extend remediationSteps = tostring(properties1.metadata.remediationDescription)
+    | extend severity = tostring(properties1.metadata.severity)
+    | extend state = tostring(properties1.status.code)
+    | extend notApplicableReason = tostring(properties1.status.cause)
+    | extend azurePortalRecommendationLink = tostring(properties1.links.azurePortal)
+    | extend complianceStandardId = replace( "-", " ", extract(@'/regulatoryComplianceStandards/([^/]*)', 1, id))
+    | extend complianceControlId = extract(@"/regulatoryComplianceControls/([^/]*)", 1, id)
+    | project complianceStandardId, complianceControlId, complianceState, subscriptionId, resourceGroup = resourceGroup1 ,resourceType, resourceName, resourceId, recommendationId, recommendationName, recommendationDisplayName, description, remediationSteps, severity, state, notApplicableReason, azurePortalRecommendationLink
+    | join kind = leftouter (securityresources
+    | where type == "microsoft.security/regulatorycompliancestandards/regulatorycompliancecontrols"
+    | extend complianceStandardId = replace( "-", " ", extract(@'/regulatoryComplianceStandards/([^/]*)', 1, id))
+    | where complianceStandardId == "Azure CIS 1.3.0"
+    | extend  controlName = tostring(properties.description)
+    | project controlId = name, controlName
+    | distinct  *) on $right.controlId == $left.complianceControlId
+    | project-away controlId
+    | distinct *
+    | where complianceControlId != "3.9"   //CMK for storage account
+    | where complianceControlId != "5.1.4" //BYOK for storage account 
+    | where complianceControlId != "7.2"   //CMK for OS and Data 
+    | where complianceControlId != "7.3"   //CMK for Unattached disks
+    | where complianceState == "Failed"
+    | where state == "Unhealthy"
+    | where resourceGroup != "rg-ipsl-management"
+    | where subscriptionId in ("320cad68-313e-4003-96f2-a4a331161a7d","37753597-fdb6-4a83-aef3-05fa979ff57d","6a06de80-4746-46db-843c-887928a6c22d","8194f84a-e1da-4ddc-af91-6687d8c6bd67","9da74070-5fc9-4671-a132-5bde93de77ef")
+    | order by complianceControlId asc, recommendationId asc
