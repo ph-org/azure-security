@@ -20,21 +20,21 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - name: Chck out repo
-    - uses: actions/checkout@v2
+      uses: actions/checkout@v2
 
       # Login to Azure
     - name: Login to Azure
-    - uses: azure/login@v1
+      uses: azure/login@v1
       with:
         creds: ${{secrets.AZURE_CREDENTIALS}}
 
       # Runs a set of commands using the runners shell
     - name: Deploy Storage Account
-    - uses: azure/arm-deploy@v1
+      uses: azure/arm-deploy@v1
       with:
         subscriptionId: e6c40320-fd22-43e6-aa68-31bdc9a1ea0c
         resourceGroupName: test-github
         template: ./arem-resources/az-storageaccount/sa.json
     
     - name: Echo output
-    - run: echo ${{ steps.deploy.outputs.containerName }}
+      run: echo ${{ steps.deploy.outputs.containerName }}
