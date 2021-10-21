@@ -25,6 +25,9 @@ jobs:
     - name: Accurics
       uses: accurics/accurics-action@v1.3.1
       id: accurics
+      with:
+        app-id: ${{ secrets.ACCURICS_APP_ID }}
+        env-id: ${{ secrets.ACCURICS_ENV_ID }}
 
       # Login to Azure
     - name: Login to Azure
