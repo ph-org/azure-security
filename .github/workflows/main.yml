@@ -21,6 +21,13 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - name: Chck out repo
       uses: actions/checkout@v2
+      
+    - name: Run Bridgecrew 
+      id: Bridgecrew
+      uses: bridgecrewio/bridgecrew-action@master
+      with:
+        api-key: ${{ secrets.BRIDGECREW_API_KEY }}
+        directory: "."
 
       # Login to Azure
     - name: Login to Azure
