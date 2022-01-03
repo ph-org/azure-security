@@ -1,0 +1,417 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "envParameters": {
+            "type": "object"
+        }
+    },
+    "variables": {
+        "networkResourceGroupName": "[concat('rg-', parameters('envParameters').serviceName, '-network-', parameters('envParameters').environment, '-', parameters('envParameters').locationShort, '-001')]",
+        "networkName": "[concat('vnet-', parameters('envParameters').serviceName, '-hub-', parameters('envParameters').environment, '-', parameters('envParameters').locationShort, '-001')]",
+        "firewallName": "[concat('afw-', parameters('envParameters').serviceName, '-', parameters('envParameters').environment, '-', parameters('envParameters').locationShort, '-001')]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2019-04-01",
+            "type": "Microsoft.Network/publicIpAddresses",
+            "name": "[concat('pip-', variables('firewallName'))]",
+            "location": "[parameters('envParameters').location]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+        {
+            "apiVersion": "2019-04-01",
+            "type": "Microsoft.Network/azureFirewalls",
+            "name": "[variables('firewallName')]",
+            "location": "[parameters('envParameters').location]",
+            "dependsOn": [
+                "[concat('pip-', variables('firewallName'))]"
+            ],
+            "zones": ["1", "2", "3"],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "IpConf",
+                        "properties": {
+                            "subnet": {
+                                "id": "[resourceId(variables('networkResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', variables('networkName'), parameters('envParameters').network.properties.subnets.azureFirewall.subnetName)]"
+                            },
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIpAddresses', concat('pip-', variables('firewallName')))]"
+                            }
+                        }
+                    }
+                ],
+                "applicationRuleCollections": [
+                    {
+                        "name": "apprule-azure-services",
+                        "properties": {
+                            "priority": 100,
+                            "action": {
+                                "type": "Allow"
+                            },
+                            "rules": [
+                                {
+                                    "name": "azure-environment",
+                                    "description": "App Rule to allow access to Azure Environment",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+                                        {
+                                            "protocolType": "Http",
+                                            "port": 80
+                                        },
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [
+                                        "gallery.azure.com",
+                                        "go.microsoft.com",
+                                        "management.core.windows.net",
+                                        "management.azure.com",
+                                        "login.microsoftonline.com",
+                                        "login-p.microsoftonline.com",
+                                        "graph.windows.net"
+                                    ],
+                                    "fqdnTags": []
+                                },
+                                {
+                                    "name": "azure-services",
+                                    "description": "App Rule to allow access to Azure Environment",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+                                        {
+                                            "protocolType": "Http",
+                                            "port": 80
+                                        },
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [
+                                        "*.redis.cache.windows.net",
+                                        "*.database.windows.net",
+                                        "*.core.windows.net",
+                                        "*.azurewebsites.net",
+                                        "*.documents.azure.com",
+                                        "*.azuredatalakestore.net",
+                                        "*.azuredatalakeanalytics.net",
+                                        "*.batch.azure.com",
+                                        "*.studio.azureml.net",
+                                        "*.vault.azure.net",
+                                        "gallery.cortanaintelligence.com",
+                                        "*.services.azureml.net",
+                                        "*.servicesbus.windows.net",
+                                        "*.azure-devices.net",
+                                        "*.azure-api.net",
+                                        "*.azure-automation.net",
+                                        "s2events.azure-automation.net",
+                                        "*.cloudapp.azure.com",
+                                        "*.search.windows.net",
+                                        "*.logic.azure.com",
+                                        "*.azureedge.net",
+                                        "*.azurehdinsight.net",
+                                        "*.asazure.windows.net",
+                                        "*.datalake.azure.net",
+                                        "api.loganalytics.io"
+                                    ],
+                                    "fqdnTags": []
+                                },
+                                {
+                                    "name": "azure-monitor",
+                                    "description": "App Rule to allow VM access to Azure Monitor",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [
+                                        "*.ods.opinsights.azure.com",
+                                        "*.oms.opinsights.azure.com",
+                                        "*.blob.core.windows.net",
+                                        "*.azure-automation.net"
+                                    ],
+                                    "fqdnTags": []
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "apprule-update-repositories",
+                        "properties": {
+                            "priority": 101,
+                            "action": {
+                                "type": "Allow"
+                            },
+                            "rules": [
+                                {
+                                    "name": "windows-update",
+                                    "description": "App Rule to allow access to Windows Update",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+                                        {
+                                            "protocolType": "Http",
+                                            "port": 80
+                                        },
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [],
+                                    "fqdnTags": [
+                                        "WindowsUpdate"
+                                    ]
+                                },
+                                {
+                                    "name": "centos-update",
+                                    "description": "App Rule to allow access to CentOS update repository",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+                                        {
+                                            "protocolType": "Http",
+                                            "port": 80
+                                        },
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [
+                                        "olcentgbl.trafficmanager.net"
+                                    ],
+                                    "fqdnTags": []
+                                },
+                                {
+                                    "name": "redhat-update",
+                                    "description": "App Rule to allow access to CentOS update repository",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+                                        {
+                                            "protocolType": "Http",
+                                            "port": 80
+                                        },
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [
+                                        "rhelimage.blob.core.windows.net"
+                                    ],
+                                    "fqdnTags": []
+                                },
+                                {
+                                    "name": "ubuntu-update",
+                                    "description": "App Rule to allow access to Ubuntu update repository",
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "protocols": [
+                                        {
+                                            "protocolType": "Http",
+                                            "port": 80
+                                        },
+                                        {
+                                            "protocolType": "Https",
+                                            "port": 443
+                                        }
+                                    ],
+                                    "targetFqdns": [
+                                        "*.ubuntu.com"
+                                    ],
+                                    "fqdnTags": []
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "natRuleCollections": [],
+                "networkRuleCollections": [
+                    {
+                        "name": "out-allow-azure-core",
+                        "properties": {
+                            "priority": 100,
+                            "action": {
+                                "type": "Allow"
+                            },
+                            "rules": [
+                                {
+                                    "name": "azure-core",
+                                    "description": "Access to Azure platform endpoints",
+                                    "protocols": [
+                                        "Any"
+                                    ],
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationAddresses": [
+                                        "168.63.129.16",
+                                        "169.254.169.254"
+                                    ],
+                                    "destinationPorts": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "name": "azure-kms",
+                                    "description": "Access to Azure platform KMS",
+                                    "protocols": [
+                                        "TCP"
+                                    ],
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationAddresses": [
+                                        "23.102.135.246"
+                                    ],
+                                    "destinationPorts": [
+                                        "1688"
+                                    ]
+                                }
+                            ]
+                        }  
+                    },
+                    {
+                        "name": "in-allow-azure-core",
+                        "properties": {
+                            "priority": 101,
+                            "action": {
+                                "type": "Allow"
+                            },
+                            "rules": [
+                                {
+                                    "name": "azure-load-balancer",
+                                    "description": "Azure Load Balancer Health Probe source IP",
+                                    "protocols": [
+                                        "Any"
+                                    ],
+                                    "sourceAddresses": [
+                                        "168.63.129.16"
+                                    ],
+                                    "destinationAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationPorts": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }  
+                    },
+                    {
+                        "name": "remote-management",
+                        "properties": {
+                            "priority": 102,
+                            "action": {
+                                "type": "Allow"
+                            },
+                            "rules": [
+                                {
+                                    "name": "rdp-ssh-from-onprem-to-bastion-subnet",
+                                    "description": "Access to Azure platform endpoints",
+                                    "protocols": [
+                                        "TCP"
+                                    ],
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationAddresses": [
+                                        "[parameters('envParameters').network.properties.subnets.bastion.subnetPrefix]"
+                                    ],
+                                    "destinationPorts": [
+                                        "22",
+                                        "3389"
+                                    ]
+                                },
+                                {
+                                    "name": "rdp-ssh-from-bastion-subnet-to-azure-network",
+                                    "description": "Access to Azure platform endpoints",
+                                    "protocols": [
+                                        "TCP"
+                                    ],
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').network.properties.subnets.bastion.subnetPrefix]"
+                                    ],
+                                    "destinationAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationPorts": [
+                                        "22",
+                                        "3389"
+                                    ]
+                                }
+                            ]
+                        }  
+                    },
+                    {
+                        "name": "dns",
+                        "properties": {
+                            "priority": 103,
+                            "action": {
+                                "type": "Allow"
+                            },
+                            "rules": [
+                                {
+                                    "name": "dns-from-internal-networks",
+                                    "description": "Access to Azure platform endpoints",
+                                    "protocols": [
+                                        "Any"
+                                    ],
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationAddresses": [
+                                        "[parameters('envParameters').network.properties.subnets.dns.subnetPrefix]"
+                                    ],
+                                    "destinationPorts": [
+                                        "53"
+                                    ]
+                                },
+                                {
+                                    "name": "dns-to-internal-networks",
+                                    "description": "Access to Azure platform endpoints",
+                                    "protocols": [
+                                        "Any"
+                                    ],
+                                    "sourceAddresses": [
+                                        "[parameters('envParameters').network.properties.subnets.dns.subnetPrefix]"
+                                    ],
+                                    "destinationAddresses": [
+                                        "[parameters('envParameters').firewall.properties.baseNetworkPrefix]"
+                                    ],
+                                    "destinationPorts": [
+                                        "53"
+                                    ]
+                                }
+                            ]
+                        }  
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}
