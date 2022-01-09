@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "sku": {
+        "type": "string",
+        "allowedValues": [],
+        "defaultValue": ""
+      },
+      "lcoation": {
+        "type": "string",
+        "allowedValues": [
+          "Standard_LRS",
+          "Standard_GRS",
+          "Standard_RAGRS"
+        ],
+        "defaultValue": "Standard_LRS"
+      }
+  },
+  "variables": {
+    "saName": "resourceadaysa01"
+
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-06-01",
+      "name": "[variables('saName')]",
+      "location": "[parameters('lcoation')]",
+      "sku": {
+        "name": "[parameters('sku')]"
+      },
+      "kind": "StorageV2",
+      /*
+      "identity": {
+        "type": "string",
+        "userAssignedIdentities": {}
+      },
+      */
+      "properties": {
+        "allowBlobPublicAccess": true,
+        "publicNetworkAccess": "Enabled",
+        "routingPreference": {
+          "publishInternetEndpoints": false,
+          "publishMicrosoftEndpoints": true,
+          "routingChoice": "MicrosoftRouting"
+        },
+        "supportsHttpsTrafficOnly": true
+      }
+    }
+  ]
+}

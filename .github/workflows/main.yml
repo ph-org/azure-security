@@ -41,7 +41,7 @@ jobs:
       with:
         subscriptionId: e6c40320-fd22-43e6-aa68-31bdc9a1ea0c
         resourceGroupName: test-github
-        template: ./arem-resources/az-storageaccount/sa.json
+        template: ./arm-resources/az-storageaccount/sa.json
     
     - name: Echo output
       run: echo ${{ steps.deploy.outputs.containerName }}
